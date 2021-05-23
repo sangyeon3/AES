@@ -171,10 +171,8 @@ void keyExpansion() {
 		roundKey[16 * i + 3] = roundKey[16 * i - 4];
 
 		// 바이트별로 S-box
-		roundKey[16 * i] = s_box(16 * i);
-		roundKey[16 * i + 1] = s_box(16 * i + 1);
-		roundKey[16 * i + 2] = s_box(16 * i + 2);
-		roundKey[16 * i + 3] = s_box(16 * i + 3);
+		for (int j = 0; j < 4; j++)
+			roundKey[16 * i + j] = s_box(16 * i + j);
 
 		// RCj 0 0 0과 xor
 		roundKey[16 * i] = RC[i] ^ roundKey[16 * i];
@@ -240,7 +238,6 @@ int main() {
 	plainFile.seekg(0, ios::beg);
 
 	uc* plain = new uc[size];
-	//uc plain[48];
 	plainFile.read((char*)plain, size);
 
 	for (size_t i = 0; i < size; i++){
