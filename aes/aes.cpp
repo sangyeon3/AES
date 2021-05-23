@@ -14,6 +14,7 @@ uc cipher[16];
 string matrixInSbox[8] = {"10001111", "11000111", "11100011", "11110001", "11111000", "01111100", "00111110","00011111"};
 // S-box의 상수 RCj
 uc RC[11] = { 0, 1, 2, 4, 8, 16, 32, 64, 128, 231, 41 };
+uc matrixInMixColumns[16] = { 2, 3, 1, 1, 1, 2, 3, 1, 1, 1, 2, 3, 3, 1, 1, 2 };
 
 uc bitlen(unsigned short num);
 uc divide(unsigned short a, uc b, uc& r);
@@ -67,7 +68,7 @@ uc multiply(uc a, uc b) {
 					temp <<= 1;
 				else {
 					temp <<= 1;
-					temp = temp ^ 0x1B;
+					temp = temp ^ 0xE7;
 				}
 			}
 			res = res ^ temp;
@@ -138,9 +139,9 @@ uc toUnsignedChar(string bin) {
 }
 
 // 바이트 단위로 s_box 연산 해주는 함수
-uc s_box(int idx) {
+uc s_box(uc input) {
 	/* 1) 곱셈의 역원 */
-	uc inv = inverse(roundKey[idx]);
+	uc inv = inverse(input);
 
 	/* 2) 행렬곱 */
 	string bin_str = toBin(inv); // inv를 2진수 string 형태로 저장하는 변수 bin_str
@@ -183,7 +184,7 @@ void keyExpansion() {
 
 		// 바이트별로 S-box
 		for (int j = 0; j < 4; j++)
-			roundKey[16 * i + j] = s_box(16 * i + j);
+			roundKey[16 * i + j] = s_box(roundKey[16 * i + j]);
 
 		// RCj 0 0 0과 xor
 		roundKey[16 * i] = RC[i] ^ roundKey[16 * i];
@@ -203,8 +204,90 @@ void keyExpansion() {
 }
 
 void encryption() {
-	// Add Round Key
+	/* print starting state */
+	cout << "\nStarting state: \n";
+	for (size_t i = 0; i < 16; i++) {
+		cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(plain[i]) << " ";
+	}
+
+	// Round 0: add round key
 	// 평문과 0번 라운드 키 xor
+	for (int i = 0; i < 16; i++) {
+		plain[i] = plain[i] ^ roundKey[i];
+	}
+
+	cout << "\nAR: ";
+	for (size_t i = 0; i < 16; i++) {
+		cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(plain[i]) << " ";
+	}
+
+	// Round 1~10, round 10은 mix columns 연산 X
+	for (int r = 1; r < 11; r++)
+	{
+		cout << dec << "\nRound " << r;
+		// 라운드키는 16*i ~ 16*i+15
+		// 1) Substitute bytes
+		for (int j = 0; j < 16; j++)
+			plain[j] = s_box(plain[j]);
+
+		cout << "\nBS: ";
+		for (size_t i = 0; i < 16; i++) {
+			cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(plain[i]) << " ";
+		}
+
+		// 2) Shift rows
+		uc temp = plain[1];
+		plain[1] = plain[5]; plain[5] = plain[9]; plain[9] = plain[13]; plain[13] = temp;
+		temp = plain[2];
+		plain[2] = plain[10]; plain[10] = temp;
+		temp = plain[6];
+		plain[6] = plain[14]; plain[14] = temp;
+		temp = plain[3];
+		plain[3] = plain[15]; plain[15] = plain[11]; plain[11] = plain[7]; plain[7] = temp;
+
+		cout << "\nSR: ";
+		for (size_t i = 0; i < 16; i++) {
+			cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(plain[i]) << " ";
+		}
+
+		uc temp_byte[4];
+
+		// 3) Mix columns
+		if (r != 10) {
+			for (int k = 0; k < 4; k++)
+			{
+				for (int i = 0; i < 4; i++)
+				{
+					temp = 0;
+					for (int j = 0; j < 4; j++)
+					{
+						temp = temp ^ multiply(matrixInMixColumns[(4 * i) + j], plain[4 * k + j]);
+					}
+					temp_byte[i] = temp;
+				}
+				for (int i = 0; i < 4; i++)
+				{
+					plain[(4 * k) + i] = temp_byte[i];
+				}
+			}
+
+			cout << "\nMC: ";
+			for (size_t i = 0; i < 16; i++) {
+				cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(plain[i]) << " ";
+			}
+		}
+
+		// 4) Add round key
+		for (int i = 0; i < 16; i++) {
+			plain[i] = plain[i] ^ roundKey[16 * r + i];
+		}
+
+		cout << "\nAR: ";
+		for (size_t i = 0; i < 16; i++) {
+			cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(plain[i]) << " ";
+		}
+	}
+
 
 }
 
@@ -253,23 +336,8 @@ int main() {
 
 		// ECB mode
 		while (plainFile.read((char*)& plain, 16)) {
-			for (size_t i = 0; i < 16; i++) {
-				cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(plain[i]) << " ";
-			}
-			cout << "\n";
-
-			// Round 0: add round key
-			for (int i = 0; i < 16; i++)
-			{
-				plain[i] = plain[i] ^ roundKey[i];
-			}
-
-
-
+			encryption();
 		}
-
-
-		/* encryption */
 
 	}
 
