@@ -7,12 +7,23 @@ typedef unsigned char uc;
 
 uc key[16];	
 uc roundKey[16 * 11];	// 라운드 키를 바이트 단위로 저장
-						// ex) round[0] ~ round[16]은 0 라운드 키
+uc plain[16];
+uc cipher[16];
 
 // S-box의 행렬곱에 사용되는 행렬
 string matrixInSbox[8] = {"10001111", "11000111", "11100011", "11110001", "11111000", "01111100", "00111110","00011111"};
 // S-box의 상수 RCj
 uc RC[11] = { 0, 1, 2, 4, 8, 16, 32, 64, 128, 231, 41 };
+
+uc bitlen(unsigned short num);
+uc divide(unsigned short a, uc b, uc& r);
+uc multiply(uc a, uc b);
+uc inverse(uc b);
+string toBin(uc hex);
+uc toUnsignedChar(string bin);
+uc s_box(int idx);
+void keyExpansion();
+void encryption();
 
 // 인자로 주어지는 short의 2진수에서의 비트수 반환하는 함수
 uc bitlen(unsigned short num) {
@@ -191,6 +202,12 @@ void keyExpansion() {
 	}
 }
 
+void encryption() {
+	// Add Round Key
+	// 평문과 0번 라운드 키 xor
+
+}
+
 
 int main() {
 	/* key expansion */
@@ -207,44 +224,55 @@ int main() {
 	// key 출력
 	for (size_t i = 0; i < 16; i++)
 		cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(key[i]) << " ";
-	cout << "\n";
 
 	keyExpansion();
 
 	// output expanded key
-	cout << "expanded key: \n";
-	for (int i = 0; i < 11; i++)
-	{
+	cout << "\nexpanded key: \n";
+	for (int i = 0; i < 11; i++) {
 		cout << dec << "k" << i << ": ";
-		for (int j = 0; j < 16; j++)
-		{	
+		for (int j = 0; j < 16; j++) {	
 			cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(roundKey[16 * i + j]) << " ";
 		}
 		cout << "\n";
 	}
 
-	ifstream plainFile("plain.bin", ios::binary);
+	char mode;
+	cout << "\ninput e or d: ";
+	cin >> mode;
 
-	if (!plainFile.is_open()) {
-		cout << "plain.bin 파일을 찾을 수 없습니다\n";
-		return 0;
-	}
+	if (mode == 'e') {
 
-	plainFile.seekg(0, ios::end);
-	int size = plainFile.tellg();
-	cout << dec <<"\nplain.bin's size = " <<size << "\n";
+		/* plain.bin 파일 읽어오기 */
+		ifstream plainFile("plain.bin", ios::binary);
 
-	plainFile.clear();
-	plainFile.seekg(0, ios::beg);
+		if (!plainFile.is_open()) {
+			cout << "plain.bin 파일을 찾을 수 없습니다\n";
+			return 0;
+		}
 
-	uc* plain = new uc[size];
-	plainFile.read((char*)plain, size);
-
-	for (size_t i = 0; i < size; i++){
-		cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(plain[i]) << " ";
-		if((i+1) % 16 ==0)
+		// ECB mode
+		while (plainFile.read((char*)& plain, 16)) {
+			for (size_t i = 0; i < 16; i++) {
+				cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(plain[i]) << " ";
+			}
 			cout << "\n";
+
+			// Round 0: add round key
+			for (int i = 0; i < 16; i++)
+			{
+				plain[i] = plain[i] ^ roundKey[i];
+			}
+
+
+
+		}
+
+
+		/* encryption */
+
 	}
+
 
 	return 0;
 }
