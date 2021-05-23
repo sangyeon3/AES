@@ -12,9 +12,12 @@ uc cipher[16];
 
 // S-box의 행렬곱에 사용되는 행렬
 string matrixInSbox[8] = {"10001111", "11000111", "11100011", "11110001", "11111000", "01111100", "00111110","00011111"};
-// S-box의 상수 RCj
-uc RC[11] = { 0, 1, 2, 4, 8, 16, 32, 64, 128, 231, 41 };
+uc RC[11] = { 0, 1, 2, 4, 8, 16, 32, 64, 128, 231, 41 };	// S-box의 상수 RCj
 uc matrixInMixColumns[16] = { 2, 3, 1, 1, 1, 2, 3, 1, 1, 1, 2, 3, 3, 1, 1, 2 };
+
+// inverse
+string inv_matrixInSbox[8] = { "00100101", "10010010", "01001001", "10100100", "01010010", "00101001", "10010100", "01001010" };
+uc inv_matrixInMixColumns[16] = { 14, 11, 13, 9, 9, 14, 11, 13, 13, 9, 14, 11, 11, 13, 9, 14 };
 
 uc bitlen(unsigned short num);
 uc divide(unsigned short a, uc b, uc& r);
@@ -29,8 +32,7 @@ void encryption();
 // 인자로 주어지는 short의 2진수에서의 비트수 반환하는 함수
 uc bitlen(unsigned short num) {
 	uc i;
-	for (i = 0; i <= 8; i++)
-	{
+	for (i = 0; i <= 8; i++) {
 		if (!(num >> (i + 1)))
 			return i;
 	}
@@ -105,7 +107,6 @@ uc inverse(uc b) {
 		w1 = w2;
 		w2 = w0 ^ multiply(q, w1);
 	}
-
 	return w1;
 }
 
@@ -114,8 +115,7 @@ string toBin(uc hex) {
 	int num = static_cast<int>(hex);
 	string bin_str = "00000000";
 
-	for (int i = 0; i < 8; i++)
-	{
+	for (int i = 0; i < 8; i++) {
 		if (num % 2 == 0)
 			bin_str[i] = '0';	// 행렬곱 시 MSB, LSB 순서가 반대이기 때문에
 		else
@@ -128,8 +128,7 @@ string toBin(uc hex) {
 // 2진수 string 형태의 변수를 unsigned char 형으로 반환
 uc toUnsignedChar(string bin) {
 	int temp = 0;
-	for (int i = 0; i < 8; i++)
-	{
+	for (int i = 0; i < 8; i++) {
 		if (bin[i] == '1')
 			temp += pow(2, i);
 	}
@@ -144,8 +143,8 @@ uc s_box(uc input) {
 	uc inv = inverse(input);
 
 	/* 2) 행렬곱 */
-	string bin_str = toBin(inv); // inv를 2진수 string 형태로 저장하는 변수 bin_str
-	string res = "00000000";	// 행렬곱 결과를 2진수 string 형태로 저장하는 변수 res
+	string bin_str = toBin(inv);	// inv를 2진수 string 형태로 저장하는 변수 bin_str
+	string res = "00000000";		// 행렬곱 결과를 2진수 string 형태로 저장하는 변수 res
 
 	for (int j = 0; j < 8; j++) {
 		int sum = 0;
@@ -158,7 +157,7 @@ uc s_box(uc input) {
 	}
 
 	/* 3) 열벡터 덧셈 */
-	uc vec = 99;	// vec="01100011"
+	uc vec = 99;				// vec="01100011"
 	uc ret = toUnsignedChar(res);	// 행렬곱 결과 res를 unsigned char 형태로 ret에 저장
 	ret = vec ^ ret;
 	
@@ -205,7 +204,7 @@ void keyExpansion() {
 
 void encryption() {
 	/* print starting state */
-	cout << "\nStarting state: \n";
+	cout << "\nStarting encryption state: \n";
 	for (size_t i = 0; i < 16; i++) {
 		cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(plain[i]) << " ";
 	}
@@ -222,8 +221,8 @@ void encryption() {
 	}
 
 	// Round 1~10, round 10은 mix columns 연산 X
-	for (int r = 1; r < 11; r++)
-	{
+	for (int r = 1; r < 11; r++) {
+
 		cout << dec << "\nRound " << r;
 		// 라운드키는 16*i ~ 16*i+15
 		// 1) Substitute bytes
@@ -250,23 +249,18 @@ void encryption() {
 			cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(plain[i]) << " ";
 		}
 
-		uc temp_byte[4];
-
 		// 3) Mix columns
+		uc temp_byte[4];
 		if (r != 10) {
-			for (int k = 0; k < 4; k++)
-			{
-				for (int i = 0; i < 4; i++)
-				{
+			for (int k = 0; k < 4; k++) {
+				for (int i = 0; i < 4; i++) {
 					temp = 0;
-					for (int j = 0; j < 4; j++)
-					{
+					for (int j = 0; j < 4; j++) {
 						temp = temp ^ multiply(matrixInMixColumns[(4 * i) + j], plain[4 * k + j]);
 					}
 					temp_byte[i] = temp;
 				}
-				for (int i = 0; i < 4; i++)
-				{
+				for (int i = 0; i < 4; i++) {
 					plain[(4 * k) + i] = temp_byte[i];
 				}
 			}
@@ -286,6 +280,118 @@ void encryption() {
 		for (size_t i = 0; i < 16; i++) {
 			cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(plain[i]) << " ";
 		}
+	}
+}
+
+// 바이트 단위로 s_box 연산 해주는 함수 inverse.ver
+uc inverseS_box(uc input) {
+
+	/* 1) 행렬곱 */
+	string bin_str = toBin(input);	// inv를 2진수 string 형태로 저장하는 변수 bin_str
+	string res = "00000000";		// 행렬곱 결과를 2진수 string 형태로 저장하는 변수 res
+
+	for (int j = 0; j < 8; j++) {
+		int sum = 0;
+		for (int i = 0; i < 8; i++) {
+			if ((inv_matrixInSbox[j][i] & bin_str[i]) == '1')
+				sum++;
+		}
+		if (sum % 2 == 1)
+			res[j] = '1';
+	}
+
+	/* 2) 열벡터 덧셈 */
+	uc vec = 5;				// vec="00000101"
+	uc ret = toUnsignedChar(res);	// 행렬곱 결과 res를 unsigned char 형태로 ret에 저장
+	ret = vec ^ ret;
+
+	/* 3) 곱셈의 역원 */
+	ret = inverse(ret);
+
+	return ret;
+}
+
+void decryption() {
+	/* print starting state */
+	cout << "\nStarting decryption state: \n";
+	for (size_t i = 0; i < 16; i++) {
+		cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(cipher[i]) << " ";
+	}
+
+	// Round 0: add round key
+	// ciphertext와 10 라운드 키 xor
+	for (int i = 0; i < 16; i++) {
+		cipher[i] = cipher[i] ^ roundKey[16*10 + i];
+	}
+
+	// add round key 이후 ciphertext 출력
+	cout << "\nAR: ";
+	for (size_t i = 0; i < 16; i++) {
+		cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(cipher[i]) << " ";
+	}
+
+	// Round 1~10, round 10은 mix columns 연산 X
+	for (int r = 1; r < 11; r++) {
+
+		cout << dec << "\nRound " << r;
+
+		// 1) Shift rows
+		uc temp = cipher[13];
+		cipher[13] = cipher[9]; cipher[9] = cipher[5]; cipher[5] = cipher[1]; cipher[1] = temp;
+		temp = cipher[2];
+		cipher[2] = cipher[10]; cipher[10] = temp;
+		temp = cipher[6];
+		cipher[6] = cipher[14]; cipher[14] = temp;
+		temp = cipher[3];
+		cipher[3] = cipher[7]; cipher[7] = cipher[11]; cipher[11] = cipher[15]; cipher[15] = temp;
+
+		// shift row 후 ciphertext 결과 출력
+		cout << "\nSR: ";
+		for (size_t i = 0; i < 16; i++) {
+			cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(cipher[i]) << " ";
+		}
+
+		// 2) Substitute bytes
+		for (int j = 0; j < 16; j++)
+			cipher[j] = inverseS_box(cipher[j]);
+
+		cout << "\nBS: ";
+		for (size_t i = 0; i < 16; i++) {
+			cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(cipher[i]) << " ";
+		}
+
+		// 3) Add round key
+		for (int i = 0; i < 16; i++) {
+			cipher[i] = cipher[i] ^ roundKey[(16*10) -(16 * r -i)];
+		}
+
+		cout << "\nAR: ";
+		for (size_t i = 0; i < 16; i++) {
+			cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(cipher[i]) << " ";
+		}
+
+		// 4) Mix columns
+		uc temp_byte[4];
+		if (r != 10) {
+			for (int k = 0; k < 4; k++) {
+				for (int i = 0; i < 4; i++) {
+					temp = 0;
+					for (int j = 0; j < 4; j++) {
+						temp = temp ^ multiply(inv_matrixInMixColumns[(4 * i) + j], cipher[4 * k + j]);
+					}
+					temp_byte[i] = temp;
+				}
+				for (int i = 0; i < 4; i++) {
+					cipher[(4 * k) + i] = temp_byte[i];
+				}
+			}
+
+			cout << "\nMC: ";
+			for (size_t i = 0; i < 16; i++) {
+				cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(cipher[i]) << " ";
+			}
+		}
+
 	}
 }
 
@@ -318,15 +424,16 @@ int main() {
 		cout << "\n";
 	}
 
+	// select encryption or decryption
 	char mode;
 	cout << "\ninput e or d: ";
 	cin >> mode;
 
+	/* encrypt */
 	if (mode == 'e') {
 
-		/* plain.bin 파일 읽어오기 */
+		// plain.bin 파일 읽어오기
 		ifstream plainFile("plain.bin", ios::binary);
-
 		if (!plainFile.is_open()) {
 			cout << "plain.bin 파일을 찾을 수 없습니다\n";
 			return 0;
@@ -338,16 +445,43 @@ int main() {
 			return 0;
 		}
 
-		// ECB mode
+		// encrypt by byte
 		while (plainFile.read((char*)& plain, 16)) {
 			encryption();
 			cipherFile.write((char*)& plain, 16);
 		}
 
 		plainFile.close();
-
+		cipherFile.close();
 	}
 
+	else if (mode == 'd') {
+
+		// cipher.bin 파일 읽어오기
+		ifstream cipherFile("cipher.bin", ios::binary);
+		if (!cipherFile.is_open()) {
+			cout << "cipher.bin 파일을 찾을 수 없습니다\n";
+			return 0;
+		}
+
+		ofstream plainFile2("plain2.bin", ios::binary);
+		if (!plainFile2.is_open()) {
+			cout << "plain2.bin 파일을 찾을 수 없습니다\n";
+			return 0;
+		}
+
+		while (cipherFile.read((char*)& cipher, 16)) {
+			decryption();
+			plainFile2.write((char*)& cipher, 16);
+		}
+
+		cipherFile.close();
+		plainFile2.close();
+	}
+	 
+	else {
+		cout << "잘못된 입력입니다\n";
+	}
 
 	return 0;
 }
