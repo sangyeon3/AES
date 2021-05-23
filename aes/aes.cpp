@@ -287,8 +287,6 @@ void encryption() {
 			cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(plain[i]) << " ";
 		}
 	}
-
-
 }
 
 
@@ -334,10 +332,19 @@ int main() {
 			return 0;
 		}
 
+		ofstream cipherFile("cipher.bin", ios::binary);
+		if (!cipherFile.is_open()) {
+			cout << "cipher.bin 파일을 찾을 수 없습니다\n";
+			return 0;
+		}
+
 		// ECB mode
 		while (plainFile.read((char*)& plain, 16)) {
 			encryption();
+			cipherFile.write((char*)& plain, 16);
 		}
+
+		plainFile.close();
 
 	}
 
