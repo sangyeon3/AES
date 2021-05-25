@@ -11,7 +11,8 @@ uc roundKey[16 * 11];	// 11개 라운드 키를 바이트 단위로 저장
 uc plain[16];			// 16바이트 plaintext 블록을 저장
 uc cipher[16];			// 16바이트 ciphertext 블록을 저장
 
-string matrixInSbox[8] = {"10001111", "11000111", "11100011", "11110001", "11111000", "01111100", "00111110","00011111"};	// S-box에서 행렬곱에 사용되는 행렬(행 기준)
+// S-box에서 행렬곱에 사용되는 행렬(행 기준)
+string matrixInSbox[8] = {"10001111", "11000111", "11100011", "11110001", "11111000", "01111100", "00111110","00011111"};
 uc RC[11] = { 0, 1, 2, 4, 8, 16, 32, 64, 128, 231, 41 };	// S-box의 상수 RCj (10진수)
 uc matrixInMixColumns[16] = { 2, 3, 1, 1, 1, 2, 3, 1, 1, 1, 2, 3, 3, 1, 1, 2 };		// mix columns의 행렬곱에 사용되는 행렬 (10진수)
 
@@ -19,62 +20,55 @@ uc matrixInMixColumns[16] = { 2, 3, 1, 1, 1, 2, 3, 1, 1, 1, 2, 3, 3, 1, 1, 2 };	
 string inv_matrixInSbox[8] = { "00100101", "10010010", "01001001", "10100100", "01010010", "00101001", "10010100", "01001010" };
 uc inv_matrixInMixColumns[16] = { 14, 11, 13, 9, 9, 14, 11, 13, 13, 9, 14, 11, 11, 13, 9, 14 };
 
-uc bitlen(unsigned short num);
+int bitlen(unsigned short num);
 uc divide(unsigned short a, uc b, uc& r);
 uc multiply(uc a, uc b);
 uc inverse(uc b);
 string toBin(uc hex);
 uc toUnsignedChar(string bin);
-uc s_box(int idx);
+uc s_box(uc input);
 void keyExpansion();
 void encryption();
 uc inverseS_box(uc input);
 void decryption();
 
 // 인자 num의 2진수에서의 비트 수 반환하는 함수
-uc bitlen(unsigned short num) {
-	uc i;
-	for (i = 0; i <= 8; i++) {
+int bitlen(unsigned short num) {
+	for (int i = 0; i <= 8; i++) {
 		if (!(num >> (i + 1)))
 			return i;
 	}
 }
 
-// 2진수 a / b 나눗셈하여 몫을 리턴해주는 함수
-// 나머지는 인자 r에 저장
+// 2진수 a / b 나눗셈하여 몫을 리턴해주는 함수. 나머지는 인자 r에 저장
 uc divide(unsigned short a, uc b, uc& r) {
-	uc a_len = bitlen(a);
-	uc b_len = bitlen(b);
+	
 	if (a < b) {
 		r = a;
 		return 0;
 	}
+	int a_len = bitlen(a);
+	int b_len = bitlen(b);
 
 	uc diff = a_len - b_len;
 	unsigned short temp = b;
-	temp = temp << diff;		// a, b의 비트 수 차이만큼 b를 left shift하여 a와 MSB 위치 맞춰주고
-	a = a ^ temp;				// a에서 shift 연산한 b(=temp)를  빼준다
+	temp = temp << diff;
+	a = a ^ temp;
 
-	// a < b가 될 때까지 나눗셈 연산 반복
 	return (1 << diff) | divide(a, b, r);		
 }
 
 
 // a * b 2진수 곱셈하여 결과를 리턴해주는 함수
-// overhead 발생 시 irreducible polynomial로 modulo reduction 수행
 uc multiply(uc a, uc b) {
 	uc res = 0;
-	// b의 LSB = 1이면 res=a
 	if (b & 0x01)
 		res = a;
 
-	// b의 각 비트가 1이면 a를 해당 비트 위치에 맞추어 더해줌
 	for (int i = 1; i < 8; i++) {
-		if (b & (0x01 << i)) {		// b의 각 비트가 1이면
+		if (b & (0x01 << i)) {
 			uc temp = a;
-			// 1비트씩 a를 left shift 하는 것을 총 i번 반복
 			for (int j = 0; j < i; j++) {
-				// overhead 발생하지 않으면 1비트 left shift 
 				if (!(temp & 0x80))
 					temp <<= 1;
 				// overhead 발생하면 modulo reduction
@@ -83,7 +77,7 @@ uc multiply(uc a, uc b) {
 					temp = temp ^ 0xE7;
 				}
 			}
-			res = res ^ temp;	// 비트 1이 되는 b의 비트 자릿수에 맞춘 a를 결과에 res에 더해줌
+			res = res ^ temp;
 		}
 	}
 	return res;
@@ -94,12 +88,12 @@ uc inverse(uc b) {
 	if (b == 0)
 		return 0;
 
-	short r0 = 0x01E7;		// irreducible polynomial
 	// 확장 유클리드에 사용되는 두 다항식 설정
-	uc r1 = b, r2, q;
 	uc v0 = 1, w0 = 0;
 	uc v1 = 0, w1 = 1;
-	uc v2, w2;
+	short r0 = 0x01E7;		// irreducible polynomial x^8 + x^7 + x^6 + x^5 + x^2 + x + 1
+	uc r1 = b, r2;
+	uc q, v2, w2;
 	
 	q = divide(r0, r1, r2);
 	v2 = v0 ^ multiply(q, v1);	
@@ -128,7 +122,7 @@ string toBin(uc hex) {
 
 	for (int i = 0; i < 8; i++) {
 		if (num % 2 == 0)
-			bin_str[i] = '0';	// 행렬곱 시 MSB, LSB 순서가 반대이기 때문에
+			bin_str[i] = '0';			// 행렬곱 시 MSB, LSB 순서가 반대이기 때문에
 		else
 			bin_str[i] = '1';
 		num = num / 2;
@@ -157,9 +151,9 @@ uc s_box(uc input) {
 	string bin_inv = toBin(inv);		// inv를 2진수 string 형태로 저장하는 변수 bin_inv
 	string res = "00000000";			// 행렬곱 결과를 2진수 string 형태로 저장하는 변수 res
 
-	for (int j = 0; j < 8; j++) {		// 행
+	for (int j = 0; j < 8; j++) {
 		int sum = 0;
-		for (int i = 0; i < 8; i++) {	// 비트
+		for (int i = 0; i < 8; i++) {
 			if ((matrixInSbox[j][i] & bin_inv[i]) == '1')
 				sum++;
 		}
@@ -183,8 +177,7 @@ void keyExpansion() {
 	}
 
 	// 1~10 라운드 키
-	for (int i = 1; i < 11; i++)
-	{
+	for (int i = 1; i < 11; i++){
 		/* g function */
 		// permutation
 		roundKey[16 * i] = roundKey[16 * i - 3];
@@ -201,11 +194,11 @@ void keyExpansion() {
 		/* end of g function */
 
 		/* 워드 단위 xor */
-		// 1번째 워드 연산
+		// 1번 워드 연산
 		for (int j = 0; j < 4; j++){
 			roundKey[16 * i + j] = roundKey[16 * (i - 1) + j] ^ roundKey[16 * i + j];
 		}
-		// 2, 3, 4번째 워드 연산
+		// 2, 3, 4번 워드 연산
 		for (int j = 4; j < 16; j++) {
 			roundKey[16 * i + j] = roundKey[16 * i + j - 4] ^ roundKey[16 * (i - 1) + j];
 		}
@@ -215,13 +208,12 @@ void keyExpansion() {
 // 16바이트 블록 plain을 encryption하여 plain에 저장
 void encryption() {
 
-	// Round 0: add round key	// ㅁㅁㅁ평문과 0번 라운드 키 xor
+	// Round 0: add round key
 	for (int i = 0; i < 16; i++) {
 		plain[i] = plain[i] ^ roundKey[i];
 	}
 
-	// Round 1~10
-	// round 10은 mix columns 연산 X
+	// Round 1~10. round 10은 mix columns 연산 X
 	for (int r = 1; r < 11; r++) {
 
 		// 1) Substitute bytes
@@ -245,9 +237,9 @@ void encryption() {
 		uc temp_byte[4];
 		if (r != 10) {
 			for (int k = 0; k < 4; k++) {
-				for (int i = 0; i < 4; i++) {		// 행
+				for (int i = 0; i < 4; i++) {
 					temp = 0;
-					for (int j = 0; j < 4; j++) {	// 열
+					for (int j = 0; j < 4; j++) {
 						temp = temp ^ multiply(matrixInMixColumns[(4 * i) + j], plain[4 * k + j]);
 					}
 					temp_byte[i] = temp;
@@ -296,7 +288,6 @@ uc inverseS_box(uc input) {
 void decryption() {
 
 	// Round 0: add round key
-	// ciphertext와 10 라운드 키 xor
 	for (int i = 0; i < 16; i++) {
 		cipher[i] = cipher[i] ^ roundKey[16*10 + i];
 	}
