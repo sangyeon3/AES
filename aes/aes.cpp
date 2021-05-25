@@ -214,37 +214,19 @@ void keyExpansion() {
 
 // 16바이트 블록 plain을 encryption하여 plain에 저장
 void encryption() {
-	// print starting state
-	cout << "\nStarting encryption state: \n";
-	for (size_t i = 0; i < 16; i++) {
-		cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(plain[i]) << " ";
-	}
 
-	// Round 0: add round key
-	// ㅁㅁㅁ평문과 0번 라운드 키 xor
+	// Round 0: add round key	// ㅁㅁㅁ평문과 0번 라운드 키 xor
 	for (int i = 0; i < 16; i++) {
 		plain[i] = plain[i] ^ roundKey[i];
-	}
-
-	cout << "\nAR: ";
-	for (size_t i = 0; i < 16; i++) {
-		cout << static_cast<int>(plain[i]) << " ";
 	}
 
 	// Round 1~10
 	// round 10은 mix columns 연산 X
 	for (int r = 1; r < 11; r++) {
 
-		cout << dec << "\nRound " << r;
-
 		// 1) Substitute bytes
 		for (int j = 0; j < 16; j++)
 			plain[j] = s_box(plain[j]);
-
-		cout << "\nBS: ";
-		for (size_t i = 0; i < 16; i++) {
-			cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(plain[i]) << " ";
-		}
 
 		// 2) Shift rows
 		// 2행
@@ -258,11 +240,6 @@ void encryption() {
 		// 4행
 		temp = plain[3];
 		plain[3] = plain[15]; plain[15] = plain[11]; plain[11] = plain[7]; plain[7] = temp;
-
-		cout << "\nSR: ";
-		for (size_t i = 0; i < 16; i++) {
-			cout << static_cast<int>(plain[i]) << " ";
-		}
 
 		// 3) Mix columns
 		uc temp_byte[4];
@@ -279,21 +256,11 @@ void encryption() {
 					plain[(4 * k) + i] = temp_byte[i];
 				}
 			}
-
-			cout << "\nMC: ";
-			for (size_t i = 0; i < 16; i++) {
-				cout << static_cast<int>(plain[i]) << " ";
-			}
 		}
 
 		// 4) Add round key
 		for (int i = 0; i < 16; i++) {
 			plain[i] = plain[i] ^ roundKey[16 * r + i];
-		}
-
-		cout << "\nAR: ";
-		for (size_t i = 0; i < 16; i++) {
-			cout << static_cast<int>(plain[i]) << " ";
 		}
 	}
 }
@@ -327,11 +294,6 @@ uc inverseS_box(uc input) {
 }
 
 void decryption() {
-	// print starting state
-	cout << "\nStarting decryption state: \n";
-	for (size_t i = 0; i < 16; i++) {
-		cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(cipher[i]) << " ";
-	}
 
 	// Round 0: add round key
 	// ciphertext와 10 라운드 키 xor
@@ -339,15 +301,8 @@ void decryption() {
 		cipher[i] = cipher[i] ^ roundKey[16*10 + i];
 	}
 
-	cout << "\nAR: ";
-	for (size_t i = 0; i < 16; i++) {
-		cout << static_cast<int>(cipher[i]) << " ";
-	}
-
 	// Round 1~10, round 10은 mix columns 연산 X
 	for (int r = 1; r < 11; r++) {
-
-		cout << dec << "\nRound " << r;
 
 		// 1) Shift rows
 		// 2행
@@ -362,28 +317,13 @@ void decryption() {
 		temp = cipher[3];
 		cipher[3] = cipher[7]; cipher[7] = cipher[11]; cipher[11] = cipher[15]; cipher[15] = temp;
 
-		cout << "\nSR: ";
-		for (size_t i = 0; i < 16; i++) {
-			cout << hex << static_cast<int>(cipher[i]) << " ";
-		}
-
 		// 2) Substitute bytes
 		for (int j = 0; j < 16; j++)
 			cipher[j] = inverseS_box(cipher[j]);
 
-		cout << "\nBS: ";
-		for (size_t i = 0; i < 16; i++) {
-			cout << static_cast<int>(cipher[i]) << " ";
-		}
-
 		// 3) Add round key
 		for (int i = 0; i < 16; i++) {
 			cipher[i] = cipher[i] ^ roundKey[(16 * 10) - (16 * r - i)];
-		}
-
-		cout << "\nAR: ";
-		for (size_t i = 0; i < 16; i++) {
-			cout << static_cast<int>(cipher[i]) << " ";
 		}
 
 		// 4) Mix columns
@@ -400,11 +340,6 @@ void decryption() {
 				for (int i = 0; i < 4; i++) {
 					cipher[(4 * k) + i] = temp_byte[i];
 				}
-			}
-
-			cout << "\nMC: ";
-			for (size_t i = 0; i < 16; i++) {
-				cout << static_cast<int>(cipher[i]) << " ";
 			}
 		}
 	}
@@ -423,25 +358,11 @@ int main() {
 	keyFile.read((char*)& key, 16);
 	keyFile.close();
 
-	// key 출력
-	for (size_t i = 0; i < 16; i++)
-		cout << hex << uppercase << setfill('0') << setw(2) << static_cast<int>(key[i]) << " ";
-
 	keyExpansion();
-
-	// print expanded key
-	cout << "\nexpanded key: \n";
-	for (int i = 0; i < 11; i++) {
-		cout << dec << "k" << i << ": ";
-		for (int j = 0; j < 16; j++) {	
-			cout << hex << static_cast<int>(roundKey[16 * i + j]) << " ";
-		}
-		cout << "\n";
-	}
 
 	// select encryption or decryption
 	char mode;
-	cout << "\ninput e or d: ";
+	cout << "input e or d: ";
 	cin >> mode;
 
 	/* encryption */
@@ -464,7 +385,7 @@ int main() {
 			encryption();
 			cipherFile.write((char*)& plain, 16);
 		}
-		cout << "\n\nEncryption complete!\n";
+		cout << "\nEncryption complete!\n";
 
 		plainFile.close();
 		cipherFile.close();
@@ -489,7 +410,7 @@ int main() {
 			decryption();
 			plainFile2.write((char*)& cipher, 16);
 		}
-		cout << "\n\nDecryption complete!\n";
+		cout << "\nDecryption complete!\n";
 
 		cipherFile.close();
 		plainFile2.close();
